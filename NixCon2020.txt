@@ -1,0 +1,55 @@
+# [TRANSCRIPT] Write the Nix package of a Rust project in 2022
+
+Hi everyone, I’m Yvan. *Welcome to this five-minute talk about how to Host a DevOps exam using NixOS… sorry for my French accent and my hoarse voice (I just recover from a COVID week) ...*
+
+---
+
+*We will show you here how with Ryan (who co-authors this talk and will also speak today about NixOps for Proxmox) ... how we deploy a Bastion host and a KVM virtual machine per student for them to deploy a small app (e.g. in this case a website) which will be at the end auto-validated.*
+
+*More precisely we run it last June with seventy students simultaneously! To test their ability we offer 3 different levels of difficulty (with a different secret for each student to avoid treachery), and exam subjects are generated with LaTeX but that's not the point of this talk.*
+
+*In this talk we will show how we set up the infrastructure on which students could log in and how we did it completely declaratively with NixOS.*
+
+---
+
+A little disclaimer here, to be fair what we write in the short-deadline context of a university exam was a bit incomplete and experimental (e.g. no student tried to perform the last level of the exam)...
+
+---
+
+N*ow I want to directly show you some parts of the code, which you can also find online on* [git.newtype.fr/yvan/devops-exam-model](http://git.newtype.fr/yvan/devops-exam-model)
+
+*Here was some of the different files we used. I will not go through all of the theses during this talk, I will e.g. pass on the content of `KVM guests.nix` which is quite straightforward, and do exactly what you can guess, which is to create a KVM guest ...*
+
+*The idea here is to show you how simple it is to turn student data into a working configuration. I will begin by showing you the short Python salsa (`generate setup.py`) that generates some Nix code (`student setup.nix`) that will be used in our configuration (`student.nix`).*
+
+---
+
+*So let's start with our bash deploy script. Deploying our service is easy, thanks to NixOS, you can see that we just `rsync` all our Nix files on prod and `nixos rebuild switch`! Before that we run `generate setup.py`.*
+
+---
+
+*This script will produce as output `student setup.nix` from a CSV file containing the matching of students' mails and usernames and a folder in which students have to send us their public SSH key (the* `read keys` function here in this code subset)*.*
+
+*The `wireguard parameters()`function calls `wg genkey` and `wg pubkey` in a subprocess to setup the Wireguard key pair for each student.*
+
+*And it relies on `nix expr.py` that expose a `py2nix` function which lets us turn a Python `Dict` into a Nix expression.*
+
+---
+
+*Here is a random example of what's look like one entry of  the Nix output (that will be built on prod later), the student choose Debian as the guest OS for his deployment, NixOS was left as a choice (but to be fair we didn't test it yet) ...*
+
+---
+
+*This is an extract of `student.nix` that import the previous configuration file, the idea is to `mapAttrs` over the students to declaratively create KVM guests, and with the same idea populate the right:*
+
+- `*networking.interfaces*`
+- `*networking.hosts*`
+- `*networking.wireguard.interfaces.wg0.peers*`
+- `*services.nginx.virtualHosts*`
+- `*security.acme.certs*`
+
+---
+
+*To sum up, we can ask "what are the benefits of this approach versus another one"? NixOS make it possible to have quick and easy iterations in our development process!*
+
+*5min was tight, Ryan and I are of course available for answering questions on any details of what I just did not take the time to present!*
